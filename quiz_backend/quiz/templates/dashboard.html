@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <title>Quiz Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      padding-top: 70px; /* A fixed-top navbar miatt */
+    }
+    .card {
+      margin-bottom: 20px;
+    }
+    .search-input {
+      margin-bottom: 10px;
+    }
+    .chart-container {
+      height: 400px; /* Növeljük kicsit a chart magasságát */
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fix pozíciós navigációs sáv -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="#">Quiz Dashboard</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item active">
+          <a class="nav-link" href="#overview">Összefoglaló</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#questions">Kérdések</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#users">Felhasználók</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ÖSSZEFOGLALÓ: diagramok (KÉT SORBA RENDEZVE) -->
+  <div class="container mt-4" id="overview">
+    <!-- ELSŐ sor: Kérdés statisztikák -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">Kérdés statisztikák</div>
+          <div class="card-body chart-container">
+            <canvas id="questionChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MÁSODIK sor: Felhasználói rangsor -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">Felhasználói rangsor (%)</div>
+          <div class="card-body chart-container">
+            <canvas id="userChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KÉRDÉSEK RÉSZLETEZŐ TÁBLA -->
+  <div class="container mt-4" id="questions">
+    <div class="card">
+      <div class="card-header">Kérdések statisztikái</div>
+      <div class="card-body">
+        <input type="text" id="questionSearch" class="form-control search-input"
+               placeholder="Keresés kérdés szerint..."
+               onkeyup="filterTable('questionTable', 'questionSearch', 0)">
+        <table class="table table-striped" id="questionTable">
+          <thead>
+            <tr>
+              <th>Kérdés</th>
+              <th>Futtatások</th>
+              <th>Helyes válaszok</th>
+              <th>Sikertelen válaszok</th>
+              <th>Sikerességi arány (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for question in questions %}
+            <tr>
+              <td>{{ question.text }}</td>
+              <td>{{ question.times_asked }}</td>
+              <td>{{ question.times_correct }}</td>
+              <td>{{ question.times_incorrect }}</td>
+              <td>{{ question.success_rate }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- FELHASZNÁLÓK RÉSZLETEZŐ TÁBLA -->
+  <div class="container mt-4" id="users">
+    <div class="card">
+      <div class="card-header">Felhasználói statisztikák</div>
+      <div class="card-body">
+        <input type="text" id="userSearch" class="form-control search-input"
+               placeholder="Keresés felhasználó szerint..."
+               onkeyup="filterTable('userTable', 'userSearch', 0)">
+        <table class="table table-striped" id="userTable">
+          <thead>
+            <tr>
+              <th>Felhasználó</th>
+              <th>Megválaszolt kérdések</th>
+              <th>Helyes válaszok</th>
+              <th>Sikertelen válaszok</th>
+              <th>Teljesítmény (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.username }}</td>
+              <td>{{ user.total }}</td>
+              <td>{{ user.correct }}</td>
+              <td>{{ user.incorrect }}</td>
+              <td>{{ user.performance_percentage }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript: jQuery, Popper, Bootstrap -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <!-- Chart.js konfiguráció -->
+  <script>
+    // --------------------- ADATOK / VÁLTOZÓK ---------------------
+    var qLabels = [
+      {% for question in questions %}
+        "{{ question.text|escapejs }}",
+      {% endfor %}
+    ];
+    var qTimesAsked = [
+      {% for question in questions %} {{ question.times_asked }}, {% endfor %}
+    ];
+    var qTimesCorrect = [
+      {% for question in questions %} {{ question.times_correct }}, {% endfor %}
+    ];
+    var qTimesIncorrect = [
+      {% for question in questions %} {{ question.times_incorrect }}, {% endfor %}
+    ];
+
+    var userLabels = [
+      {% for user in users %}
+        "{{ user.username|escapejs }}",
+      {% endfor %}
+    ];
+    var userPerformances = [
+      {% for user in users %}
+        {{ user.performance_percentage }},
+      {% endfor %}
+    ];
+
+    // ------ KÉRDÉS DIAGRAM (questionChart) ------
+    var ctx1 = document.getElementById('questionChart').getContext('2d');
+    var questionChart = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: qLabels,
+        datasets: [
+          {
+            label: 'Összes futtatás',
+            data: qTimesAsked,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'Helyes válaszok',
+            data: qTimesCorrect,
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'Sikertelen válaszok',
+            data: qTimesIncorrect,
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: {
+              // Túl hosszú kérdések esetén ne hagyja ki automatikusan a címkéket
+              autoSkip: false,
+              // Tengelyfelirat forgatás
+              maxRotation: 60,
+              minRotation: 30,
+              // Opcionális: hosszú kérdések rövidítése
+              callback: function(value, index, ticks) {
+                var label = this.getLabelForValue(value);
+                if (label.length > 25) {
+                  label = label.substring(0, 25) + '...';
+                }
+                return label;
+              }
+            }
+          },
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // ------ FELHASZNÁLÓI RANGSOR (userChart) ------
+    var ctx2 = document.getElementById('userChart').getContext('2d');
+    var userChart = new Chart(ctx2, {
+      type: 'bar',  // Szimpla oszlopdiagram
+      data: {
+        labels: userLabels,
+        datasets: [{
+          label: 'Teljesítmény (%)',
+          data: userPerformances,
+          backgroundColor: 'rgba(255, 159, 64, 0.2)',
+          borderColor: 'rgba(255, 159, 64, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100  // Ha 0-100% skálát szeretnél
+          }
+        }
+      }
+    });
+
+    // ------ TÁBLÁZAT SZŰRÉSI FUNKCIÓ ------
+    function filterTable(tableId, inputId, colIndex) {
+      var input = document.getElementById(inputId);
+      var filter = input.value.toUpperCase();
+      var table = document.getElementById(tableId);
+      var tr = table.getElementsByTagName("tr");
+
+      // Az i=1-től indulunk, mert az 1. sor a header
+      for (var i = 1; i < tr.length; i++) {
+        var td = tr[i].getElementsByTagName("td")[colIndex];
+        if (td) {
+          var txtValue = td.textContent || td.innerText;
+          if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            tr[i].style.display = "";
+          } else {
+            tr[i].style.display = "none";
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
