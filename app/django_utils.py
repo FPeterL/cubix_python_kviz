@@ -1,9 +1,7 @@
-# app/django_utils.py
 import os
 import subprocess
 import sys
 import time
-
 
 def start_django_server():
     """

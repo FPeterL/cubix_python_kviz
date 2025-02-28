@@ -1,0 +1,20 @@
+2025-02-28 13:02:22,080 ERROR:Error in check_answer_text
+Traceback (most recent call last):
+  File "C:\Users\feherp\Documents\GitHub\Cubix_quiz\app\quiz_app.py", line 186, in check_answer_text
+    self.cursor.execute("""
+sqlite3.OperationalError: no such table: quiz_question
+2025-02-28 13:02:24,456 ERROR:Error in check_answer
+Traceback (most recent call last):
+  File "C:\Users\feherp\Documents\GitHub\Cubix_quiz\app\quiz_app.py", line 149, in check_answer
+    self.cursor.execute("UPDATE quiz_question SET times_asked = times_asked + 1 WHERE id = ?", (qid,))
+sqlite3.OperationalError: no such table: quiz_question
+2025-02-28 13:02:31,604 ERROR:Failed to load questions
+Traceback (most recent call last):
+  File "C:\Users\feherp\Documents\GitHub\Cubix_quiz\app\quiz_app.py", line 85, in load_questions
+    self.cursor.execute("""
+sqlite3.OperationalError: no such table: quiz_question
+2025-02-28 13:02:33,691 ERROR:Error in check_answer_text
+Traceback (most recent call last):
+  File "C:\Users\feherp\Documents\GitHub\Cubix_quiz\app\quiz_app.py", line 186, in check_answer_text
+    self.cursor.execute("""
+sqlite3.OperationalError: no such table: quiz_question

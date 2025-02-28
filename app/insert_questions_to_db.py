@@ -1,7 +1,6 @@
 import sqlite3
 import os
 
-
 base_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.dirname(base_dir)
 db_path = os.path.join(project_dir, 'quiz_backend', 'db.sqlite3')

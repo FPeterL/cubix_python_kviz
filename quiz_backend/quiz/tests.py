@@ -1,5 +1,5 @@
 import sys, os
-# Egy három szinttel feljebb lévő mappa, amely tartalmazza a common_utils.py-t.
+
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if project_root not in sys.path:
     sys.path.append(project_root)
@@ -8,8 +8,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from .models import Question, QuizAttempt
 from common_utils import score_string
-from datetime import datetime
-from difflib import SequenceMatcher
+
 
 class ScoreStringTests(TestCase):
     def test_exact_match(self):

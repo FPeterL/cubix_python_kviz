@@ -1,10 +1,8 @@
-#!/usr/bin/env python
 import os
 import django
 import random
 from datetime import datetime, timedelta
 
-# 1) Django környezet inicializálása
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'quiz_backend.settings')
 django.setup()
 
@@ -26,7 +24,6 @@ def random_date_str(around_date_str):
     around_date = datetime.strptime(around_date_str, "%Y-%m-%d")
     delta_days = random.randint(-200, 200)
     new_date = around_date + timedelta(days=delta_days)
-    # YYYY-MM-DD formátum
     return new_date.strftime("%Y-%m-%d")
 
 def calculate_date_score(user_input, correct_answer):
@@ -60,7 +57,6 @@ def random_string_answer(correct_answer):
     """
     chance = random.random()
     if chance < 0.40:
-        # 40% eséllyel pontosan helyes
         return correct_answer
     letters = "abcdefghijklmnopqrstuvwxyzáéíóöőúüű"
     length = random.randint(3, 6)

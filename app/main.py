@@ -1,4 +1,3 @@
-# app/main.py
 import tkinter as tk
 from quiz_app import QuizApp
 from django_utils import start_django_server
@@ -7,7 +6,6 @@ from django_utils import start_django_server
 Elindítja a Django szervert és az applikációt.
 """
 
-# Django szerver indítása
 django_process = start_django_server()
 
 root = tk.Tk()

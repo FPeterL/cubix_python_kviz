@@ -1,4 +1,3 @@
-# app/quiz_app.py
 import os
 import tkinter as tk
 import tkinter.messagebox as messagebox
@@ -23,6 +22,7 @@ class QuizApp:
         self.master.resizable(False, False)
 
         try:
+            # -- EREDETI: fixen a quiz_backend/db.sqlite3 hivatkozik
             base_dir = os.path.dirname(os.path.abspath(__file__))
             project_dir = os.path.dirname(base_dir)
             db_path = os.path.join(project_dir, 'quiz_backend', 'db.sqlite3')
@@ -120,10 +120,15 @@ class QuizApp:
         self.answer_buttons = []
         if qtype == 'MC':
             options = [('A', a), ('B', b), ('C', c), ('D', d)]
+            # random sorrendben jelennek meg a gombok
             random.shuffle(options)
             for letter, answer in options:
-                btn = tk.Button(self.master, text=f"{answer}", font=("Arial", 12),
-                                command=lambda selected=answer: self.check_answer(selected))
+                btn = tk.Button(
+                    self.master,
+                    text=f"{answer}",
+                    font=("Arial", 12),
+                    command=lambda selected=answer: self.check_answer(selected)
+                )
                 btn.pack(fill='x', padx=20, pady=5)
                 self.answer_buttons.append(btn)
         else:
@@ -144,9 +149,13 @@ class QuizApp:
             qid, text, qtype, a, b, c, d, correct_option, correct_answer = self.current_question
             answer_map = {'A': a, 'B': b, 'C': c, 'D': d}
             correct_text = answer_map.get(correct_option, "")
+
+            # Letiltjuk a gombokat, hogy ne lehessen újra rákattintani
             for btn in self.answer_buttons:
                 btn.config(state="disabled")
+
             self.cursor.execute("UPDATE quiz_question SET times_asked = times_asked + 1 WHERE id = ?", (qid,))
+
             if selected.lower() == correct_text.lower():
                 self.cursor.execute("UPDATE quiz_question SET times_correct = times_correct + 1 WHERE id = ?", (qid,))
                 result_text = "Helyes válasz!"
@@ -155,25 +164,28 @@ class QuizApp:
             else:
                 result_text = f"Helytelen válasz! A helyes válasz: {correct_text}"
                 score = 0
+
             self.cursor.execute("""
                 INSERT INTO quiz_attempt (username, question_id, user_answer, correct_option, score)
                 VALUES (?, ?, ?, ?, ?)
             """, (self.username, qid, selected, correct_option, score))
             self.conn.commit()
+
             self.result_label.config(text=result_text)
+
+            # Tovább gomb
             self.continue_button = tk.Button(self.master, text="Tovább", font=("Arial", 12), command=self.next_question)
             self.continue_button.pack(pady=10)
+
         except Exception as e:
             logging.exception("Error in check_answer")
             messagebox.showerror("Error", f"Error processing answer: {e}")
 
     def check_answer_text(self):
         try:
-            # Kérdés adatai kicsomagolva
             qid, text, qtype, a, b, c, d, correct_option, correct_answer = self.current_question
             user_input = self.answer_entry.get().strip()
 
-            # Üres válasz ellenőrzése
             if not user_input:
                 self.result_label.config(text="Kérlek, add meg a választ!")
                 return
@@ -181,24 +193,19 @@ class QuizApp:
             score = 0
             result_text = ""
 
-            # Csak akkor növeljük a times_asked értéket, ha valóban válaszolni próbál a felhasználó
-            # (Ezt akár a sikeres válasz után is teheted — a döntés rajtad áll.)
+            # times_asked növelése
             self.cursor.execute("""
                 UPDATE quiz_question
                 SET times_asked = times_asked + 1
                 WHERE id = ?
             """, (qid,))
 
-            # Dátum típusú kérdés kezelése
             if qtype == 'DATE':
                 try:
-                    # Megpróbáljuk a beírt értéket érvényes dátummá alakítani
                     user_date = datetime.strptime(user_input, "%Y-%m-%d")
                     correct_date = datetime.strptime(correct_answer, "%Y-%m-%d")
-
                     diff_days = abs((user_date - correct_date).days)
 
-                    # Egyszerű pontozási logika (példa)
                     if diff_days == 0:
                         score = 100
                     elif diff_days < 30:
@@ -210,40 +217,35 @@ class QuizApp:
                     result_text = f"Pontszám: {score}%. (Helyes dátum: {correct_answer})"
 
                 except ValueError:
-                    # Ha rossz formátumú a dátum, írjunk ki hibaüzenetet, ne tiltsuk le a gombot
                     self.result_label.config(
-                        text="Hibás formátum!\n Kérlek, YYYY-MM-DD formátumban\n add meg a dátumot."
+                        text="Hibás formátum!\nKérlek, YYYY-MM-DD formátumban add meg a dátumot."
                     )
-                    return  # Kilépünk, nem rögzítjük az attemptet, és nem tiljuk le a gombot
+                    return
 
-            # Szöveges kérdés (STRING)
             elif qtype == 'STRING':
-                # Tételezzük fel, hogy van egy score_string() függvényünk
+                # Szöveges összehasonlítás: a common_utils.py-ban lévő score_string
                 score = score_string(user_input, correct_answer)
                 result_text = f"Pontszám: {score}%. (Helyes válasz: {correct_answer})"
 
-            # Ha idáig eljut a kód, akkor a formátum már helyes (DATE esetén),
-            # ezért tilthatjuk le az „Ellenőriz” gombot, és adhatjuk hozzá a „Tovább” gombot.
+            # Letiltjuk az "Ellenőriz" gombot
             for widget in self.master.winfo_children():
                 if isinstance(widget, tk.Button) and widget['text'] == "Ellenőriz":
                     widget.config(state="disabled")
 
-            # Mentjük az eredményt az adatbázisba
+            # Rögzítjük a DB-be
             self.cursor.execute("""
                 INSERT INTO quiz_attempt (username, question_id, user_answer, correct_option, score)
                 VALUES (?, ?, ?, ?, ?)
             """, (self.username, qid, user_input, correct_answer, score))
             self.conn.commit()
 
-            # Eredmény kijelzése
             self.result_label.config(text=result_text)
-
-            # Ha a felhasználó pontszámát (correct_count) összegzed:
             self.correct_count += score
 
-            # „Tovább” gomb létrehozása (csak a sikeres formátum után)
-            self.continue_button = tk.Button(self.master, text="Tovább", font=("Arial", 12),
-                                             command=self.next_question)
+            # Tovább gomb
+            self.continue_button = tk.Button(
+                self.master, text="Tovább", font=("Arial", 12), command=self.next_question
+            )
             self.continue_button.pack(pady=10)
 
         except Exception as e:
